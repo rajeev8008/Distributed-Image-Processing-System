@@ -26,4 +26,3 @@ def merge_tiles(tiles: Iterable[TileInfo], size: tuple[int, int], output_path: P
             result.paste(image, (tile.x, tile.y))
     output_path.parent.mkdir(parents=True, exist_ok=True)
     result.save(output_path, "PNG")
-

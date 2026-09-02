@@ -26,4 +26,3 @@ def job_page(request: Request, job_id: str):
 def health(db: Session = Depends(get_db)):
     db.execute(text("SELECT 1"))
     return {"status": "ok"}
-

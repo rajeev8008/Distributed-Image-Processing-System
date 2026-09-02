@@ -14,4 +14,3 @@ def storage_path(relative_path: str) -> Path:
 def prepare_job_directories(job_id: str) -> None:
     for directory in ("originals", f"jobs/{job_id}/input", f"jobs/{job_id}/output", "final"):
         storage_path(directory).mkdir(parents=True, exist_ok=True)
-

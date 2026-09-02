@@ -29,4 +29,3 @@ def split_image(image: Image.Image, output_dir: Path, tile_size: int = 512) -> l
             tiles.append(TileInfo(index, x, y, width, height, path))
             index += 1
     return tiles
-

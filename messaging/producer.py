@@ -37,4 +37,3 @@ def publish_tile_jobs(tiles: Iterable[TileTask]) -> None:
     remaining = producer.flush(10)
     if remaining or errors:
         raise RuntimeError(f"Kafka did not deliver {remaining or len(errors)} tile message(s)")
-

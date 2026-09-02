@@ -194,4 +194,3 @@ aggregator
 The API, workers, and aggregator mount the same named storage volume and share one internal Docker network.
 
 Kubernetes is not required or used.
-

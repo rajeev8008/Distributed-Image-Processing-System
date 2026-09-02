@@ -284,7 +284,7 @@ Do not claim a speed improvement unless the measured results show one. If three 
 
 ## 14. Resume points
 
-> **Distributed Image Processing System**  
+> **Distributed Image Processing System**
 > Python, FastAPI, Apache Kafka, PostgreSQL, Pillow, Docker
 
 - Designed a Kafka-driven master-worker system that partitions high-resolution images into 512 x 512 tiles and distributes processing across parallel worker containers.
@@ -310,7 +310,6 @@ feat: distribute tile jobs through Kafka consumers
 feat: add PostgreSQL-backed processing status
 test: verify worker reassignment and idempotent delivery
 ```
-
 Bad commit messages:
 
 ```text
@@ -318,4 +317,3 @@ complete phase 1
 implement stage 2
 phase 3 changes
 ```
-
