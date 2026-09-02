@@ -1,5 +1,7 @@
 # Distributed Image Processing System
 
+[![CI](https://github.com/rajeev8008/Distributed-Image-Processing-System/actions/workflows/ci.yml/badge.svg)](https://github.com/rajeev8008/Distributed-Image-Processing-System/actions/workflows/ci.yml)
+
 An event-driven image-processing pipeline that partitions high-resolution images into independent tiles, distributes them across parallel workers through Apache Kafka, and reconstructs the processed results using coordinate-based aggregation.
 
 The system uses Kafka consumer groups for load-balanced task execution, PostgreSQL for durable job tracking, and idempotent workers with manual offset commits for safe message redelivery.
@@ -49,6 +51,7 @@ Browser → FastAPI → PostgreSQL
 Docker with Docker Compose is required.
 
 ```powershell
+$env:POSTGRES_PASSWORD = Read-Host "PostgreSQL password"
 docker compose up --build -d --scale worker=3
 docker compose ps
 docker compose logs -f worker aggregator
@@ -86,14 +89,36 @@ docker compose down
 
 ## Tests
 
+Install the pinned dependencies, then run the isolated unit suite:
+
 ```powershell
 python -m pip install -r requirements.txt
-python -m pytest -q tests
+python -m pytest tests/unit -q --basetemp=.test-unit-temp -p no:cacheprovider
 ```
 
-The test suite covers upload validation, edge-tile dimensions, out-of-order reconstruction, reference-image equality, persisted worker outcomes, offset commit ordering, bounded failures, and idempotent redelivery.
+The unit tests cover image validation, exact and edge tile dimensions, coordinate-based out-of-order reconstruction, pixel equality, deterministic paths, state changes, bounded retries, and idempotent redelivery.
 
-Latest verified result: **5 tests passed**.
+Integration tests require Docker. They start only PostgreSQL and Kafka in an isolated Compose project:
+
+```powershell
+$env:POSTGRES_PASSWORD = [guid]::NewGuid().ToString("N")
+docker compose -p dips-integration up -d --wait postgres kafka topic-init
+docker compose -p dips-integration run --rm --build `
+  -e TEST_DATABASE_URL="postgresql+psycopg://image_app:$env:POSTGRES_PASSWORD@postgres:5432/image_processing" `
+  -e TEST_KAFKA_BOOTSTRAP_SERVERS=kafka:9092 `
+  api python -m pytest tests/integration -q -p no:cacheprovider
+docker compose -p dips-integration down -v --remove-orphans
+```
+
+The end-to-end test creates and removes its own uniquely named Compose project. It launches three workers, uploads a deterministic image, downloads the result, checks every pixel, and verifies Kafka lag:
+
+```powershell
+python -m pytest tests/e2e -q --basetemp=.test-e2e-temp -p no:cacheprovider
+```
+
+GitHub Actions runs these correctness suites for pull requests targeting `main` and pushes to `main`. On failure it collects Compose logs, and its cleanup step always removes CI containers and volumes.
+
+The `8192 × 8192` benchmark below is deliberately separate from pytest and CI.
 
 ## Reproduce the benchmark
 
