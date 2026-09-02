@@ -85,7 +85,7 @@ services:
     build: .
     command: python -m aggregator.runner
     depends_on:
-      postgres:
+      api:
         condition: service_healthy
     environment: *app-environment
     volumes:
