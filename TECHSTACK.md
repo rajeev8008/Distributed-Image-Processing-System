@@ -95,7 +95,7 @@ distributed-image-processing/
 ## 5. Environment variables
 
 ```env
-DATABASE_URL=postgresql+psycopg://image_app:image_app@postgres:5432/image_processing
+DATABASE_URL=postgresql+psycopg://image_app:${POSTGRES_PASSWORD}@postgres:5432/image_processing
 KAFKA_BOOTSTRAP_SERVERS=kafka:9092
 KAFKA_TILE_TOPIC=tile-jobs
 KAFKA_CONSUMER_GROUP=tile-workers
@@ -175,4 +175,3 @@ Do not introduce:
 - Monitoring platforms
 
 The system should remain a clear Docker Compose project focused on Kafka and tile-based parallel processing.
-
