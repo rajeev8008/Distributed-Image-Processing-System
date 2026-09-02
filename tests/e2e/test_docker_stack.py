@@ -101,5 +101,9 @@ def test_docker_compose_pipeline_is_pixel_exact():
             if token.startswith("worker_id=")
         }
         assert len(worker_ids) == 3
+    except Exception:
+        logs = compose(project, environment, "logs", "--no-color", check=False)
+        print(logs.stdout, logs.stderr)
+        raise
     finally:
         compose(project, environment, "down", "-v", "--remove-orphans", check=False)
