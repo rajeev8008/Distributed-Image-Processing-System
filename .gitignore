@@ -1,0 +1,12 @@
+IDE_PROMPT.md
+ide_prompt.md
+prompts.md
+.env
+storage/
+__pycache__/
+.pytest_cache/
+pytest-cache-files-*/
+.test-*/
+*.pyc
+.venv/
+*.db
