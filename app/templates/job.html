@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Image job</title></head>
+<body>
+  <main>
+    <h1>Image job</h1>
+    <p id="status" aria-live="polite">Loading…</p>
+    <a id="download" href="/jobs/{{ job_id }}/download" hidden>Download result</a>
+  </main>
+  <script>
+    async function refresh() {
+      const response = await fetch('/jobs/{{ job_id }}');
+      const job = await response.json();
+      document.querySelector('#status').textContent = `${job.status}: ${job.progress_percent}% (${job.completed_tiles}/${job.total_tiles} tiles)`;
+      document.querySelector('#download').hidden = job.status !== 'COMPLETED';
+      if (!['COMPLETED', 'FAILED'].includes(job.status)) setTimeout(refresh, 2000);
+    }
+    refresh();
+  </script>
+</body>
+</html>
+
