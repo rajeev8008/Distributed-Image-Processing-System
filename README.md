@@ -25,15 +25,33 @@ On a 67.1-megapixel image divided into 256 tiles:
 6. The aggregator reconstructs the final image using stored coordinates.
 7. PostgreSQL maintains durable job and tile state throughout the workflow.
 
-```text
-Browser → FastAPI → PostgreSQL
-             │
-             ├→ Shared storage
-             └→ Kafka (3 partitions) → 3 workers
-                                      ↓
-                              Polling aggregator
-                                      ↓
-                                Final image
+```mermaid
+flowchart LR
+    user["Browser"] -->|Upload image| api["FastAPI API"]
+    api -->|Create job and tile records| db[("PostgreSQL")]
+    api -->|Store original and input tiles| storage[("Shared image storage")]
+    api -->|Publish keyed tile tasks| kafka{{"Kafka<br/>tile-jobs · 3 partitions"}}
+
+    subgraph workers["Kafka consumer group · tile-workers"]
+        w1["Worker 1"]
+        w2["Worker 2"]
+        w3["Worker 3"]
+    end
+
+    kafka --> w1
+    kafka --> w2
+    kafka --> w3
+    storage -->|Read input tiles| workers
+    workers -->|Write grayscale tiles| storage
+    workers -->|Persist status, then commit offsets| db
+
+    aggregator["Polling aggregator"] -->|Read job and tile state| db
+    aggregator -->|Read processed tiles| storage
+    aggregator -->|Write reconstructed image| storage
+    aggregator -->|Mark job complete| db
+
+    user -->|Poll status| api
+    api -->|Download final image| user
 ```
 
 ## Technology
