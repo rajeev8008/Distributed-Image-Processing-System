@@ -152,6 +152,10 @@ python scripts/benchmark.py path\to\image.png --workers 3
 
 The runner reports the source SHA-256, resolution, megapixels, tile count, runtime, throughput, and output correctness as JSON. The results above include upload, splitting, Kafka processing, aggregation, polling, and download verification; they are measured local results, not production-performance claims.
 
-## Scope
+## Author
 
-This is a single-machine Docker Compose system with one grayscale operation, one Kafka topic, one broker, one PostgreSQL instance, three worker containers, one aggregator, and one shared volume. It intentionally excludes Kubernetes, cloud storage, Redis, Celery, React, WebSockets, authentication, and monitoring platforms.
+Developed by **K Rajeev**.
+
+## License
+
+[MIT](LICENSE)
