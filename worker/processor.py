@@ -16,6 +16,29 @@ def process_tile(db: Session, tile_id: str, worker_id: str) -> TileStatus:
     if tile.status == TileStatus.COMPLETED:
         return tile.status
 
+    output_path = f"jobs/{tile.job_id}/output/{tile.tile_index}.png"
+    if tile.attempt_count >= settings.max_processing_attempts:
+        try:
+            with Image.open(storage_path(output_path)) as output:
+                if output.size != (tile.width, tile.height):
+                    raise ValueError(
+                        f"expected {tile.width}x{tile.height}, got {output.width}x{output.height}"
+                    )
+                output.verify()
+            tile.output_path = output_path
+            tile.status = TileStatus.COMPLETED
+            tile.completed_at = datetime.now(UTC)
+            tile.error_message = None
+        except Exception as exc:
+            tile.output_path = None
+            tile.status = TileStatus.FAILED
+            tile.error_message = (
+                "Retry budget exhausted after interrupted processing; "
+                f"no valid deterministic output was available: {exc}"
+            )
+        db.commit()
+        return tile.status
+
     while tile.attempt_count < settings.max_processing_attempts:
         tile.status = TileStatus.PROCESSING
         tile.attempt_count += 1
@@ -23,7 +46,6 @@ def process_tile(db: Session, tile_id: str, worker_id: str) -> TileStatus:
         db.commit()
         started = perf_counter()
         try:
-            output_path = f"jobs/{tile.job_id}/output/{tile.tile_index}.png"
             with Image.open(storage_path(tile.input_path)) as image:
                 image.convert("L").save(storage_path(output_path), "PNG")
             tile.output_path = output_path

@@ -24,6 +24,8 @@ def handle_message(consumer: Consumer, message) -> TileStatus:
     payload = json.loads(message.value())
     with SessionLocal() as db:
         status = process_tile(db, payload["tile_id"], settings.worker_id)
+    if status not in {TileStatus.COMPLETED, TileStatus.FAILED}:
+        raise RuntimeError(f"Tile {payload['tile_id']} returned non-terminal status {status.value}")
     consumer.commit(message=message, asynchronous=False)
     logger.info(
         "event=tile_processed worker_id=%s partition=%s tile_id=%s status=%s",
