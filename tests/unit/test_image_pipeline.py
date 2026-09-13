@@ -1,4 +1,5 @@
 import io
+import json
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,7 @@ from app.db.models import Base, ImageJob, JobStatus, TileStatus, TileTask
 from app.services.merger import convert_tiles_to_grayscale, merge_tiles
 from app.services.splitter import split_image
 from app.services.storage import storage_path
+from worker.consumer import handle_message
 from worker.processor import process_tile
 
 
@@ -153,6 +155,34 @@ def test_worker_stops_after_three_attempts_and_fails_parent(db, tmp_path, monkey
     assert job.status == JobStatus.FAILED
 
 
+def test_exhausted_processing_tile_without_valid_output_fails(db, tmp_path, monkeypatch):
+    monkeypatch.setattr("app.config.settings.storage_root", tmp_path)
+    _, tile = add_job(db, tmp_path)
+    tile.status = TileStatus.PROCESSING
+    tile.attempt_count = 3
+    db.commit()
+
+    assert process_tile(db, tile.id, "worker-redelivery") == TileStatus.FAILED
+    assert tile.attempt_count == 3
+    assert "Retry budget exhausted after interrupted processing" in tile.error_message
+
+
+def test_exhausted_processing_tile_recovers_valid_output(db, tmp_path, monkeypatch):
+    monkeypatch.setattr("app.config.settings.storage_root", tmp_path)
+    _, tile = add_job(db, tmp_path)
+    output_path = tmp_path / "jobs" / "job" / "output" / "0.png"
+    Image.new("L", (8, 8), 42).save(output_path)
+    tile.status = TileStatus.PROCESSING
+    tile.attempt_count = 3
+    db.commit()
+
+    assert process_tile(db, tile.id, "worker-redelivery") == TileStatus.COMPLETED
+    assert tile.output_path == "jobs/job/output/0.png"
+    assert tile.attempt_count == 3
+    assert tile.completed_at is not None
+    assert tile.error_message is None
+
+
 def test_completed_tile_redelivery_is_skipped(db, tmp_path, monkeypatch):
     monkeypatch.setattr("app.config.settings.storage_root", tmp_path)
     _, tile = add_job(db, tmp_path)
@@ -163,3 +193,30 @@ def test_completed_tile_redelivery_is_skipped(db, tmp_path, monkeypatch):
     assert tile.attempt_count == 1
     assert tile.worker_id == "worker-first"
     assert output_path.read_bytes() == original_bytes
+
+
+def test_consumer_does_not_commit_non_terminal_result(monkeypatch):
+    class SessionContext:
+        def __enter__(self):
+            return object()
+
+        def __exit__(self, *_args):
+            pass
+
+    class Message:
+        def value(self):
+            return json.dumps({"tile_id": "tile"}).encode()
+
+    class Consumer:
+        committed = False
+
+        def commit(self, **_kwargs):
+            self.committed = True
+
+    consumer = Consumer()
+    monkeypatch.setattr("worker.consumer.SessionLocal", SessionContext)
+    monkeypatch.setattr("worker.consumer.process_tile", lambda *_args: TileStatus.PROCESSING)
+
+    with pytest.raises(RuntimeError, match="non-terminal status PROCESSING"):
+        handle_message(consumer, Message())
+    assert not consumer.committed
